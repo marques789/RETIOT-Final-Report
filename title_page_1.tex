@@ -118,7 +118,7 @@ Nº76618\\
 \newpage
 
 \section{Introduction}
-The focus of this report is to present and explain the various tasks fulfilled in the scope of the project \textbf{RETIOT, “Reflectometry Technologies to Enhance the Future Internet of Things and Cyber-Physical Systems"}. The main objective is to interface the \textit{Texas Instruments mmwave} radar sensor with the \textit{Robot Operating System} and use it to achieve autonomous navigation for the \textbf{turtlebot2} robot.
+The focus of this report is to present and explain the various tasks fulfilled in the scope of the project \textbf{RETIOT, “Reflectometry Technologies to Enhance the Future Internet of Things and Cyber-Physical Systems"}. The main objective is to interface the \textit{Texas Instruments mmwave} radar sensor with the \textit{Robot Operating System} platform and use it to achieve autonomous navigation for the \textbf{turtlebot2} robot.
 
 
 \section{Procedure}
@@ -273,12 +273,18 @@ However this information might be useful later on when we want to avoid collisio
 \section{ROS navigation stack}
 %Less Implementation More general explaining of how to navigate
 The ROS navigation stack is a set of software packages that properly combined can get a robot to navigate autonomously.
-Figure X  shows an example of turtlebot2 using the navigation stack to drive in rviz.
+Figure \ref{fig:plans} shows an example of \textbf{turtlebot2} using the navigation stack to drive autonomously.
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[width=\linewidth]{rviz_navigation2.png}
+    \caption{Rviz displaying the ros navigation stack components while \textbf{turtlebot2} is navigating.}
+    \label{fig:plans}
+\end{figure}
 However, before running it we first need to properly setup the robot.
 \subsection{Requirements}
 \subsubsection{Transform Configuration}
 The Navigation stack requires that the relationships between the different frames must be published in \textbf{tf} or \textbf{tf\_static} topic. This makes it so the robot perceives what is around him correctly.
-Figure \ref{fig:tf} shows all the frames and their transforms with each other for \textbf{turtlebot2}. However the main transforms we need to worry about are between the sensors and the base link frame.
+Figure \ref{fig:tf} shows all the frames and their transforms with each other for \textbf{turtlebot2}. However the main transforms that need to be correct are between the sensors and the base link frame.
 \begin{figure}[!htb]
     \centering
     \includegraphics[scale=0.2]{tf.png}
@@ -303,7 +309,7 @@ We need to localize the robot in some way to correctly navigate. Therefore we re
 This node will subscribe to the velocity message outputted by the navigation stack and convert them into the appropriate motor commands to send to the mobile base that will actually make the robot move.
 
 \subsubsection{Mapping}
-This part is not mandatory but it helps to have a some sort of map being published to use as a global reference for the robot. It is used by \textbf(amcl) to correctly localize the robot and to mark previously detected lethal obstacles when the map was built. Fig. \ref{fig:map} shows an example of a map that might be used by the ROS navigation stack.
+This part is not mandatory but it helps to have a some sort of map being published to use as a global reference for the robot. It is used by \textbf{amcl} to correctly localize the robot and to mark previously detected lethal obstacles when the map was built. Fig. \ref{fig:map} shows an example of a map that might be used by the ROS navigation stack.
 \begin{figure}[!htb]
     \centering
     \includegraphics[scale=0.2]{map.png}
@@ -316,13 +322,14 @@ If the setup is done correctly we can now run the navigation stack.
 \subsection{Navigation Stack components}
 %%STUFF
 Now that we have all the things we need for navigation we need an entity that actually processes all this information in an intelligent way to determine the best velocity command for the robot. This is done by the \textbf{move\_base node} and its peripherals.
-Figure \ref{fig:plans} shows an example of the global and local plan calculated by the ROS navigation stack.
+Figure \ref{fig:nav_stack} shows an overview of the different components of the navigation stack.
 \begin{figure}[!htb]
     \centering
-    \includegraphics[width=\linewidth]{rviz_navigation2.png}
-    \caption{Global and Local plan calculated by the navigation stack}
-    \label{fig:plans}
+    \includegraphics[width=\linewidth]{overview_tf.png}
+    \caption{Navigation stack block diagram}
+    \label{fig:nav_stack}
 \end{figure}
+
 \subsubsection{Move Base}
 
 The move base node base links together a global and local planner as well as a local and global costmap to achieve the end goal provided by an action server. It also loads a set of determined recovery behaviors if the planners fail to produce a valid path. 
@@ -332,7 +339,7 @@ The global and local planners are plugins specified by the user. This choice wil
 \subsubsection{Global Planner}
  
 The job of this component is to produce the best trajectory for a robot to take with limited amount of information given by the global costmap.
-This plan can be updated when the robot gets stuck or by a user specific frequency (\textbf{planner\_frequency}). The algorithms used to get this path are usually \textbf{dijaktra} or \textbf{A*}.
+This plan can be updated when the robot gets stuck or by a user specific frequency. The algorithms used to get this path are usually \textbf{djakarta} or \textbf{A*}.
 
 \subsubsection{Local Planner}
 The local planner takes into account the trajectory given by the global planner and tries to compute velocity commands that follow it. However the path given may be to close to an obstacle detected and in order to avoid it we must deviate from the plan given to avoid collision. The function of the local planner is to avoid dynamic obstacles that appear while still trying to follow the global plan and goal. 
@@ -372,14 +379,14 @@ The \textbf{move\_base} node is responsible for organizing the communications be
     \item \texttt{planner\_patience $(s)$} - Maximum amount of time to get a valid global plan before going to recovery behavior (only if its in PLANNING state).
 \end{itemize}
 
-Increasing the \texttt{controller\_frequency} and \texttt{planner\_frequency} parameters will improve the overall responsiveness of the robot. However it demands a higher computational power that the robot might not have and will result in the loops missing their desired rates.
+Increasing the \texttt{controller\_frequency} and \texttt{planner\_frequency} parameters will improve the overall responsiveness of the robot. However it demands a higher computational power that the robot might not have and might result in the loops missing their desired rates.
 %%PUT GOOD VALUES?
 
 The \texttt{controller\_patience} and \texttt{planner\_patience} parameters will determine the tolerance for the global and local planner to produce valid plans and velocities. If you want the robot to express recovery behaviors quickly when it gets stuck you should decrease this parameters. If you want to give the robot more time to think than increase them instead.
 
 \subsubsection{TrajectoryPlannerROS}
 
-\textbf{TrajectoryPlannerROS} is encharged of computing the velocity that will be sent to the mobile base. To do this it simulates various velocities, calculates the associated trajectories for a given time and picks the one with lowest cost. The cost is determined by the \textbf{cost function} that takes into account the local goal, the global plan and local costmap values in the trajectory points.
+\textbf{TrajectoryPlannerROS} is encharged of computing the velocity that will be sent to the mobile base. To do this it simulates various velocities, calculates the associated trajectories for a given time, and picks the one with lowest cost. The cost is determined by a \textbf{cost function} that takes into account the local goal, the global plan and local costmap values in the trajectory points.
 
 \paragraph{Main Parameters}
 \begin{itemize}[label={}]
@@ -424,16 +431,16 @@ The cost function used to evaluate a trajectory is given by:
    &+\texttt{occdist\_scale} * \textbf{maxobscost} 
 \end{align*}
 
-Where \textbf{path\_dist} is the distance from the endpoint of the trajectory to the global path in map cells or meters, \textbf{goal\_dist} is the distance from the endpoint of the trajectory to the local goal in map cells or meters and \textbf{maxobscost} is equal to the \textbf{maximum obstacle cost} (given by the local costmap) of all the points along the trajectory.
-
+Where \textbf{path\_dist} is the distance from the endpoint of the trajectory to the global path in map cells, \textbf{goal\_dist} is the distance from the endpoint of the trajectory to the local goal in map cells, and \textbf{maxobscost} is equal to the \textbf{maximum obstacle cost} (given by the local costmap) of all the points along the trajectory.
+Fig. \ref{fig:cost_cloud} displays an example of this values when the robot is navigating and the corresponding cost to each cell in the local costmap.
 
 
 %%RVIZ cost cloud
 \begin{figure}[!htb]
     \centering
     \includegraphics[scale=0.3]{cost_cloud.png}
-    \caption{Cost cloud published in rviz. Red and green cells correspond to low and high cost respectively}
-    \label{fig:my_label}
+    \caption{Cost cloud published in rviz. Red cells correspond to low cost and green cells correspond to a high cost}
+    \label{fig:cost_cloud}
 \end{figure}
 
 
@@ -442,7 +449,7 @@ Increasing \texttt{pdist\_scale} will make the robot stick more closely to the p
 Since the trajectories are scored taking into account their endpoints, \texttt{sim\_time} will have a large effect on the behavior of the robot. Simulating to far ahead in the future  will result in smoother curves that are not very flexible. Setting this to 1-2 to seconds seems have good results in our case.
 
 \subsubsection{Global and Local Costmap}
-The global and local costmap value will influence the global and local plans created respectively so their parameters must be selected appropriately.
+The global and local costmap value will respectively influence the global and local plans created, therefore, their parameters must be selected appropriately.
 \paragraph{Main Parameters}
 \begin{itemize}[label={}]
     \item \texttt{plugins} - Specifies the list of layers we want to use.
@@ -468,22 +475,25 @@ This layer uses a list of sensors defined by the user to mark lethal obstacles o
     \item \texttt{raytrace\_range $(m)$} - distance to raytrace out obstacles from the map.
 \end{itemize}
 
-Increasing \texttt{raytrace\_range $(m)$} is useful when the costmap is cluttered with obstacles that need to be cleared. Otherwise if there are objects being cleared when they are not supposed to the parameter should be decreased.
+Increasing \texttt{raytrace\_range} is useful when the costmap is cluttered with obstacles that need to be cleared. Otherwise if there are objects being cleared when they are not supposed to the parameter should be decreased.
 \subsubsection{Inflation layer}
 This layer takes into account lethal obstacles of the master costmap and sets the surrounding cells with a value that depends on the distance to the occupied cell.
 \begin{itemize}[label={}]
     \item \texttt{cost\_scaling\_factor} - Exponential rate at which obstacle values are decreased in value.
     \item \texttt{inflation\_radius $(m)$} - The radius in meters to which the map inflates obstacle cost values.
 \end{itemize}
+ For all cells in the costmap further than the \textbf{inscribed radius} distance and closer than the \textbf{inflation radius} away from an obstacle their value is given by:
 \begin{align*}
-    \textbf{cell value}=253*exp(-\texttt{cost\_scaling\_factor} * (\textbf{obsdist} - \textbf{insc\_radius}))
+    \textbf{cell value}=253*exp & [-\texttt{cost\_scaling\_factor}*\\
+    & (\textbf{obstacle distance} - \textbf{inscribed radius})]
 \end{align*}
+
 The \texttt{cost\_scaling\_factor} and \texttt{inflation\_radius} parameters will determine how the values of the costmap are set and consequently  the navigation outputted plans. They must be tuned correctly so the robot avoid obstacles while still being able to go through narrow spaces.  
 
 
-\section{Results}
-Since the number of available parameters is so wide it is hard to admit a specific configuration as the most optimal one. However we find that the parameters shown in tables 1 and 2 give reasonable results when using both radar and lidar as sensor sources. 
-
+\subsection{Results}
+%\subsubsection{Navigation Setup}
+Since the number of available parameters is so wide it is hard to admit a specific configuration as the most optimal. However, using the parameters of tables 1 and 2 have shown to give good navigation results when using both radar and lidar as sensor sources.
 \begin{center} 
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{ |c|l|c| } 
@@ -503,8 +513,6 @@ Move Base & controller\_frequency   & 5.0 \\
  & planner\_patience  & 5.0 \\
  \hline
  & acc\_lim\_x    & 2.0 \\
-\cline{2-3}
-& acc\_lim\_y   & 0.0 \\
 \cline{2-3}
 & acc\_lim\_theta   & 2.0 \\
 \cline{2-3}
@@ -590,6 +598,23 @@ Global  & static\_layer & enabled & true \\
 \captionof{table}{Layers used in the global and local costmap and their parameter values used in this test.} 
 
 \end{center}
+\paragraph{Successes}
+\begin{itemize}
+    \item Robot is able to avoid static obstacles easily if it correctly detects them.
+    \item It can go through relatively narrow spaces.
+    \item Usually reaches the goal in a fast manner.
+    \item Stops when obstacles are put in its path and replans accordingly.
+\end{itemize}
+\paragraph{Problems}
+\begin{itemize}
+    \item May be slow to react to dynamic obstacles since it does not take into account their velocity when planning.
+    \item Sometimes it does not behave well when obstacles are to close.
+    \item If the navigation environment is too open the robot does not have anything to raytrace and will result in the obstacles of the costmap not being cleared properly.
+\end{itemize}
+\paragraph{Future Work}
+Until now we have only taken into account the position information of the obstacles to avoid them. The next step will be to take into account their radial velocity (given by the radar) to increase the responsiveness of the robot to dynamic objects.  
+
+
 \begin{comment}
 There are three global planners currently available: \textbf{carrot\_planner}, \textbf{navfn} and \textbf{global\_planner}. In our case we will be using \textbf{navfn}.
 %%DJAKTRA AND A* global plan image
@@ -600,12 +625,7 @@ There are three global planners currently available: \textbf{carrot\_planner}, \
     \item \textbf{default\_tolerance} - A tolerance on the goal point for the planner.
 \end{itemize}
 %%NAV STACK IMG
-\begin{figure}[!htb]
-    \centering
-    \includegraphics[width=\linewidth]{overview_tf.png}
-    \caption{Clustering}
-    \label{fig:my_label}
-\end{figure}
+
 \paragraph{Main Parameters}
 
 After running various experiments in different conditions we conclude that the parameters shown in tables 1 and 2 of Appendix A make the robot achieve the goal quickly while still avoiding obstacles and minimizing the time it is stuck.
