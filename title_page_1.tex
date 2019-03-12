@@ -64,14 +64,14 @@
 
 \textsc{\LARGE Universidade de Aveiro}\\[1.5cm] % Name of your university/college
 \textsc{\Large IEETA}\\[0.5cm] % Major heading such as course name
-\textsc{\Large RETIOT}\\[0.5cm]
+\textsc{\Large RETIOT - Technical Report}\\[0.5cm]
 
 %----------------------------------------------------------------------------------------
 %	TITLE SECTION
 %----------------------------------------------------------------------------------------
 
 \HRule \\[0.4cm]
-{ \huge \bfseries Technical Report}\\[0.4cm] % Title of your document
+{ \huge \bfseries Autonomous navigation using Millimeter Wave Sensors}\\[0.4cm] % Title of your document
 \HRule \\[1.5cm]
  
 %----------------------------------------------------------------------------------------
@@ -91,19 +91,19 @@ Nº76618\\
 \end{minipage}\\[2cm]
 
 % If you don't want a supervisor, uncomment the two lines below and remove the section above
-\Large {RETIOT -}
+\Large {}
 %John \textsc{Smith}\\[3cm] % Your name
 
 %----------------------------------------------------------------------------------------
 %	DATE SECTION
 %----------------------------------------------------------------------------------------
 
-{\large \emph{February de 2018}}\\[2cm] % Date, change the \today to a set date if you want to be precise
+%{\large \emph{February de 2018}}\\[2cm] % Date, change the \today to a set date if you want to be precise
 
 %----------------------------------------------------------------------------------------
 %	LOGO SECTION
 %----------------------------------------------------------------------------------------
-
+\bigskip
 \includegraphics[scale=0.4]{ua_logo.png} % Include a department/university logo - this will require the graphicx package
  
 %----------------------------------------------------------------------------------------
@@ -157,39 +157,50 @@ Figure \ref{fig:ros_concepts} shows an overview of the general architecture of R
 \begin{figure}[!htb]
     \centering
     \includegraphics[scale=0.28]{ros_graph.png}
-    \caption{ROS architecture overview}
+    \caption{ROS architecture overview \cite{rosbasics}}
     \label{fig:ros_concepts}
 \end{figure}
 \section{Interface between ROS and the radar}
-Texas Instruments provides a ros package that interfaces radar data to the ROS message format. The incoming radar data from the mmWave EVM is decoded in order to create a \textbf{PointCloud2} type ROS message which is published in topic \textbf{/radar/RScan}.
+\subsection{Radar board}
+The radar board chosen for this work is TI's AWR1642BOOST (Fig.\ref{fig:awr}). It will be used for obstacle detection using Frequency Modulated Continuous Wave (FMCW) technology.
+\begin{figure}[!htb]
+    \centering
+    \includegraphics[scale=1.0]{sensor.jpg}
+    \caption{Texas Instruments AWR1642BOOST evaluation board.}
+    \label{fig:awr}
+\end{figure}
+\subsection{ROS radar driver}
+
+Texas Instruments provides a ros package that interfaces radar data to the ROS message format \cite{tidriver}. The incoming radar data from the mmWave EVM is decoded in order to create a \textbf{PointCloud2} type ROS message which is published in topic \textbf{/radar/RScan}.
 
 \subsection{PointCloud2 radar data stucture}
 
 %%PUT figure:
-The published ROS message PointCloud2 follows the mmwave demo structure (Fig. 2). Each point has 6 fields:
+The published ROS message PointCloud2 follows the mmwave demo structure (Fig. \ref{fig:demodata} ). Each point has 6 fields:
 \begin{itemize}
-\item x - position x of the detected  object in the frame of the radar.
-\item y - position y.
-\item z - position z (for 2D devices this is equal to zero).
-\item range - range of the object relative to the radar frame.
-\item doppler - radial velocity of the object relative to the radar frame.
+\item \textbf{x (m)} - position x of the detected  object in the frame of the radar.
+\item \textbf{y (m)} - position y.
+\item \textbf{z (m)} - position z (for 2D devices this is equal to zero).
+\item \textbf{range (m)} - range of the object relative to the radar frame.
+\item \textbf{doppler (m/s)} - radial velocity of the object relative to the radar frame.
 % POR IMAGEM
-\item intensity - relative power of the received signal corresponding to that object.
+\item \textbf{intensity} - relative power of the received signal corresponding to that object.
 \end{itemize}
 
 \begin{figure}[!htb]
     \centering
-    \includegraphics[scale=0.5]{2_demo_vis_struct.PNG}
-    \caption{Part of the mmwave demo packet containing object detection information. This fields will be used to construct the ROS PointCloud2.}
-    \label{fig:my_label}
+    \includegraphics[scale=0.8]{2_demo_vis_struct.PNG}
+    \caption{Part of the mmwave demo packet containing object detection information. This fields will be used to construct the ROS PointCloud2\cite{demodata}.}
+    \label{fig:demodata}
 \end{figure}
 \subsubsection{Running the driver and observing the outputted pointcloud in rviz}
-To start receiving and visualizing the incoming radar data run the following commands while in your ROS workspace directory:
+After installing the driver \cite{tidriver} to start receiving and visualizing the incoming radar data run the following commands while in your ROS workspace directory:
  \begin{lstlisting}[language=bash]
 source devel/setup.bash
 roslaunch ti_mmwave_rospkg rviz_1642_2d.launch
 \end{lstlisting}
-This will launch the TI mmWave ROS Driver nodes that configure the EVM and publish the radar data. After that rviz will load and you should be able to visualize the objects detected by the radar. Figure \ref{fig:radar_rviz} shows an example of the radar data displayed on rviz. The points correspond to object detected by the radar.
+
+This will launch the TI mmWave ROS Driver nodes that configure the EVM and publish the radar data. After that rviz will load and you should be able to visualize the objects detected by the radar. Figure \ref{fig:radar_rviz} shows an example of the radar data displayed on rviz. The points correspond to objects   detected by the radar.
 
 \begin{figure}[!htb]
     \centering
@@ -199,6 +210,7 @@ This will launch the TI mmWave ROS Driver nodes that configure the EVM and publi
 \end{figure}
 \subsection{Visualization of the radar point cloud}
 Plotting the points in the XYZ space is not enough to fully visualize the radar data sent since each point also gives velocity and intensity information.
+
 We can visualize it by using markers such as arrows or text in rviz.
 Figure \ref{fig:doppler_marker} displays the radial velocity of each point with an arrow. The size of the arrow indicates how fast the object is going. Figure \ref{fig:intensity_marker} shows the intensity values of each object in text. This type of visualization will be useful later on when we try to filter the cloud.
 
@@ -219,7 +231,7 @@ Figure \ref{fig:doppler_marker} displays the radial velocity of each point with 
 The characteristics of this point cloud such as publishing rate, range resolution, maximum range, velocity resolution, maximum velocity depends on the chirp profile configuration file loaded in the EVM. This file is located in the \textbf{"cfg"} folder of the ti mmwave package and can be replaced in order to accommodate a given application.
 
 The easiest way to create a chirp configuration file is the mmWave Demo Visualizer. With it you can auto generate a configuration file given a set of specifications.
-Another way of doing this is manually. This however requires the understanding of the radar operating principle and the meaning of the commands in the configuration file.
+Another way of doing this is manually. This however requires the understanding of the radar operating principle and the configuration commands.
 %??????????????
 %For more information on this topics we suggest the reading of the links bellow:
 %SDK USER GUIDE
@@ -234,13 +246,13 @@ This operations will be done by using the \textbf{Point Cloud Library}. PCL offe
 \subsection{Passthrough Filters}
 In the point cloud there may be some points that have undesirable characteristics, such as points with low intensity  that lead to false detections or outside of the radar operating range. To remove this points we use \textbf{passthrough filters} that specify the range of values a given field can have in order for a point to be kept in the point cloud. 
 
-For example, if we are only interested in obstacles that are moving between 0.5 m/s and 1.0 m/s (radial velocity), this can be done by using a pass through filter on the doppler channel.
+For example, if we are only interested in obstacles that are moving between 0.5 m/s and 1.0 m/s (radial velocity), this can be done by using a passthrough filter on the doppler channel.
 Figure \ref{fig:filters} shows an example where we delete false detections close to the radar by filtering the pointcloud by intensity.
-\begin{figure}[h]%
+\begin{figure}[htb]%
     \centering
-    \subfloat[Non filtered pointcloud]{\includegraphics[width=6.34cm]{not_filt.png} }%
+    \subfloat[Non filtered pointcloud]{\includegraphics[width=5.5cm]{not_filt.png} }%
     \qquad
-    \subfloat[Filtered pointcloud by intensity]{{\includegraphics[width=6.34cm]{filt.png}}}%
+    \subfloat[Filtered pointcloud by intensity]{{\includegraphics[width=5.5cm]{filt.png}}}%
     \caption{Example of filtering the pointcloud}%
     \label{fig:filters}
 \end{figure}
@@ -255,16 +267,17 @@ To identify objects such as persons we can use euclidean clustering. This identi
 \end{itemize}
 %%%PUT CLUSTER RVIZ FIGURE
 This parameters must be tuned to the type of cluster we want to find. 
-If the \textbf{ClusterTolerance} parameter is too small, it can happen that an actual object can be seen as multiple clusters, if the value is high, it could happen that multiple objects are seen as one cluster.
+If the \textbf{ClusterTolerance} parameter is too small, it can happen that an actual object can be seen as multiple clusters, if the value is high, it could happen that multiple objects are seen as one cluster \cite{cluster}.
 %In figure \ref{fig:filters} we use the module pcl
 %% CLUSTER FIGURE
 \begin{figure}[!htb]
     \centering
-    \includegraphics[width=\linewidth]{cluster.png}
+    \includegraphics[scale=0.27]{cluster.png}
     \caption{Clusters found on the radar pointcloud}
     \label{fig:clustering}
 \end{figure}
 \subsection{Using radar velocity information to predict cluster movement}
+
 We previously said that our point cloud has a doppler channel that retrieves the relative radial velocity of the point in respect to the radar. We can use this information to compute the mean velocity of a cluster and make a prediction of its position in the future. This comes with the limitation that the radar only gives us radial velocity so the prediction will just estimate if the cluster will be closer or further away. 
 However this information might be useful later on when we want to avoid collisions with incoming moving objects when our robot is navigating.
 
@@ -280,14 +293,15 @@ Figure \ref{fig:plans} shows an example of \textbf{turtlebot2} using the navigat
     \caption{Rviz displaying the ros navigation stack components while \textbf{turtlebot2} is navigating.}
     \label{fig:plans}
 \end{figure}
-However, before running it we first need to properly setup the robot.
+
+However, before running it we first need to properly setup the robot \cite{stacksetup}.
 \subsection{Requirements}
 \subsubsection{Transform Configuration}
 The Navigation stack requires that the relationships between the different frames must be published in \textbf{tf} or \textbf{tf\_static} topic. This makes it so the robot perceives what is around him correctly.
 Figure \ref{fig:tf} shows all the frames and their transforms with each other for \textbf{turtlebot2}. However the main transforms that need to be correct are between the sensors and the base link frame.
 \begin{figure}[!htb]
     \centering
-    \includegraphics[scale=0.2]{tf.png}
+    \includegraphics[scale=0.3]{tf.png}
     \caption{Transform relationships in our robot}
     \label{fig:tf}
 \end{figure}
@@ -298,7 +312,7 @@ In our case we will use both the \textbf{radar} (PointCloud2) and the \textbf{li
 Figure \ref{fig:sensors} shows an example of the published data from both in rviz.
 \begin{figure}[!htb]
     \centering
-    \includegraphics[scale=0.2]{sensors2.png}
+    \includegraphics[scale=0.3]{sensors2.png}
     \caption{Obstacle defections by both radar and lidar}
     \label{fig:sensors}
 \end{figure}
@@ -312,7 +326,7 @@ This node will subscribe to the velocity message outputted by the navigation sta
 This part is not mandatory but it helps to have a some sort of map being published to use as a global reference for the robot. It is used by \textbf{amcl} to correctly localize the robot and to mark previously detected lethal obstacles when the map was built. Fig. \ref{fig:map} shows an example of a map that might be used by the ROS navigation stack.
 \begin{figure}[!htb]
     \centering
-    \includegraphics[scale=0.2]{map.png}
+    \includegraphics[scale=0.3]{map.png}
     \caption{Example of a map created in the IRIS laboratory}
     \label{fig:map}
 \end{figure}
@@ -322,7 +336,7 @@ If the setup is done correctly we can now run the navigation stack.
 \subsection{Navigation Stack components}
 %%STUFF
 Now that we have all the things we need for navigation we need an entity that actually processes all this information in an intelligent way to determine the best velocity command for the robot. This is done by the \textbf{move\_base node} and its peripherals.
-Figure \ref{fig:nav_stack} shows an overview of the different components of the navigation stack.
+Figure \ref{fig:nav_stack} shows an overview of the different components of the navigation stack \cite{movebase}.
 \begin{figure}[!htb]
     \centering
     \includegraphics[width=\linewidth]{overview_tf.png}
@@ -349,19 +363,21 @@ The global and local costmap share the same class, the  \texttt{Costmap2DROS}. T
 
 \paragraph{Available Layers}
 \begin{itemize}[label={}]
-    \item \textbf{Obstacle Layer} - Marks objects retrieved from \texttt{observation\_sources} with lethal value. It also raytraces observations to clear out space.
+    \item \textbf{Obstacle Layer} - Marks objects retrieved from our sensor sources with lethal value. It also raytraces observations to clear out space.
     %Does more stuff
-    \item \textbf{Inflation Layer} - Inflates the detected obstacles taking into account the \texttt{robot\_radius} and \texttt{inflation\_radius}. The closer the cells are from a lethal obstacle the more value they will have.
+    \item \textbf{Inflation Layer} - Inflates the detected obstacles taking into account the robot radius and inflation radius. The closer the cells are from a lethal obstacle the more value they will have.
     %%....(needs explanation)
     \item \textbf{Static Layer} - Retrieves static information from the \textbf{/map} topic and marks them has lethal objects (Typically only used in global costmap).
 \end{itemize}
-Figure \ref{fig:layers} shows how the combined layers produce the master costmap that will be used by the planners.
+
+Figure \ref{fig:layers} shows how the combined layers produce the master costmap that will be used by the planners \cite{dlu}.
 \begin{figure}[!htb]
     \centering
-    \includegraphics{layers.png}
+    \includegraphics[scale=0.75]{layers.png}
     \caption{Different layers used to create the final costmap grid that will be used in the navigation stack}
     \label{fig:layers}
 \end{figure}
+
 All the user defined layers will in conjunction create the final master costmap (either local or global) that will be used by the planners.
 
 
@@ -371,12 +387,12 @@ In this section it is presented and described the main parameters of each compon
 Some parameters are omitted due to being less relevant in this context and should be considered as having the default value.
 \subsubsection{Move Base}
 The \textbf{move\_base} node is responsible for organizing the communications between all the stack components and managing the state of the robot.
-\paragraph{Main Parameters}
+\paragraph{Main Parameters \cite{movebase}}
 \begin{itemize}[label={}]
     \item \texttt{controller\_frequency $(Hz)$} - Frequency at which move base will ask the local planner for velocity commands.
     \item \texttt{controller\_patience $(s)$} - Maximum amount of time to get a valid velocity from the local planner before going to recovery behavior.
     \item \texttt{planner\_frequency $(Hz)$} - Frequency at which the move base will ask the global planner for a new plan. If set to 0.0 it will only update the plan when the robot gets stuck.
-    \item \texttt{planner\_patience $(s)$} - Maximum amount of time to get a valid global plan before going to recovery behavior (only if its in PLANNING state).
+    \item \texttt{planner\_patience $(s)$} - Maximum amount of time to get a valid global plan before going to recovery behavior.
 \end{itemize}
 
 Increasing the \texttt{controller\_frequency} and \texttt{planner\_frequency} parameters will improve the overall responsiveness of the robot. However it demands a higher computational power that the robot might not have and might result in the loops missing their desired rates.
@@ -384,11 +400,11 @@ Increasing the \texttt{controller\_frequency} and \texttt{planner\_frequency} pa
 
 The \texttt{controller\_patience} and \texttt{planner\_patience} parameters will determine the tolerance for the global and local planner to produce valid plans and velocities. If you want the robot to express recovery behaviors quickly when it gets stuck you should decrease this parameters. If you want to give the robot more time to think than increase them instead.
 
-\subsubsection{TrajectoryPlannerROS}
+\subsubsection{TrajectoryPlannerROS }
 
 \textbf{TrajectoryPlannerROS} is encharged of computing the velocity that will be sent to the mobile base. To do this it simulates various velocities, calculates the associated trajectories for a given time, and picks the one with lowest cost. The cost is determined by a \textbf{cost function} that takes into account the local goal, the global plan and local costmap values in the trajectory points.
 
-\paragraph{Main Parameters}
+\paragraph{Main Parameters \cite{localplanner}}
 \begin{itemize}[label={}]
     \item \texttt{acc\_lim\_x $(m/s²)$} - x (translation) acceleration limit.
     \item \texttt{acc\_lim\_theta $(radians/s²)$} - rotational acceleration limit.
@@ -404,7 +420,7 @@ The \texttt{controller\_patience} and \texttt{planner\_patience} parameters will
     \item \texttt{occdist\_scale} - Weight for how much the trajectory should avoid obstacles.
 \end{itemize}
 
-The velocity and acceleration limits should be set to choose  less than the base's capability to ensure the computed velocities are actually physically achievable. In the \textbf{turtlebot2} case, its maximum  translational velocity is 0.7 m/s and its maximum rotational velocity is 180 deg/s (3.14 rad/s).
+The velocity and acceleration limits should be set to less than the base's capability to ensure the computed velocities are actually physically achievable. In the \textbf{turtlebot2} case, its maximum  translational velocity is 0.7 m/s and its maximum rotational velocity is 180 deg/s (3.14 rad/s).
 
 \paragraph{Getting the Best Trajectory}
 The algorithm to get the best trajectory goes as follows:
@@ -432,7 +448,7 @@ The cost function used to evaluate a trajectory is given by:
 \end{align*}
 
 Where \textbf{path\_dist} is the distance from the endpoint of the trajectory to the global path in map cells, \textbf{goal\_dist} is the distance from the endpoint of the trajectory to the local goal in map cells, and \textbf{maxobscost} is equal to the \textbf{maximum obstacle cost} (given by the local costmap) of all the points along the trajectory.
-Fig. \ref{fig:cost_cloud} displays an example of this values when the robot is navigating and the corresponding cost to each cell in the local costmap.
+Fig. \ref{fig:cost_cloud} displays an example of this values when the robot is navigating.
 
 
 %%RVIZ cost cloud
@@ -448,9 +464,9 @@ Increasing \texttt{pdist\_scale} will make the robot stick more closely to the p
 
 Since the trajectories are scored taking into account their endpoints, \texttt{sim\_time} will have a large effect on the behavior of the robot. Simulating to far ahead in the future  will result in smoother curves that are not very flexible. Setting this to 1-2 to seconds seems have good results in our case.
 
-\subsubsection{Global and Local Costmap}
+\subsubsection{Global and Local Costmap }
 The global and local costmap value will respectively influence the global and local plans created, therefore, their parameters must be selected appropriately.
-\paragraph{Main Parameters}
+\paragraph{Main Parameters \cite{costmap}}
 \begin{itemize}[label={}]
     \item \texttt{plugins} - Specifies the list of layers we want to use.
     \item \texttt{robot\_radius $(Hz)$} - The radius of the robot.
@@ -467,7 +483,7 @@ The map sizes and resolution must be compromised with the update frequency to re
 
 \subsubsection{Obstacle layer}
 This layer uses a list of sensors defined by the user to mark lethal obstacles on the costmap. It also raytraces obstacles in order to free up space.
-\paragraph{Main Parameters}
+\paragraph{Main Parameters \cite{obstacle}}
 
 \begin{itemize}[label={}]
     \item \texttt{observation\_sources} - Specifies the list of sensors we want to use to detect and/or clear obstacles.
@@ -476,13 +492,15 @@ This layer uses a list of sensors defined by the user to mark lethal obstacles o
 \end{itemize}
 
 Increasing \texttt{raytrace\_range} is useful when the costmap is cluttered with obstacles that need to be cleared. Otherwise if there are objects being cleared when they are not supposed to the parameter should be decreased.
+
 \subsubsection{Inflation layer}
 This layer takes into account lethal obstacles of the master costmap and sets the surrounding cells with a value that depends on the distance to the occupied cell.
+\paragraph{Main Parameters \cite{inflation}}
 \begin{itemize}[label={}]
     \item \texttt{cost\_scaling\_factor} - Exponential rate at which obstacle values are decreased in value.
     \item \texttt{inflation\_radius $(m)$} - The radius in meters to which the map inflates obstacle cost values.
 \end{itemize}
- For all cells in the costmap further than the \textbf{inscribed radius} distance and closer than the \textbf{inflation radius} away from an obstacle their value is given by:
+ For all cells in the costmap further than the \textbf{inscribed radius} (if the robot is circular this is equal to \texttt{robot\_radius}) distance and closer than the \textbf{inflation radius}  away from an obstacle their value is given by:
 \begin{align*}
     \textbf{cell value}=253*exp & [-\texttt{cost\_scaling\_factor}*\\
     & (\textbf{obstacle distance} - \textbf{inscribed radius})]
@@ -494,6 +512,14 @@ The \texttt{cost\_scaling\_factor} and \texttt{inflation\_radius} parameters wil
 \subsection{Results}
 %\subsubsection{Navigation Setup}
 Since the number of available parameters is so wide it is hard to admit a specific configuration as the most optimal. However, using the parameters of tables 1 and 2 have shown to give good navigation results when using both radar and lidar as sensor sources.
+\paragraph{Successes}
+\begin{itemize}
+    \item Robot is able to avoid static obstacles easily if it correctly detects them.
+    \item It can go through relatively narrow spaces.
+    \item Usually reaches the goal in a fast manner.
+    \item Stops when obstacles are put in its path and replans accordingly.
+\end{itemize}
+
 \begin{center} 
 \begin{adjustbox}{max width=\textwidth}
 \begin{tabular}{ |c|l|c| } 
@@ -568,7 +594,7 @@ Local \& Global Costmap  & robot\_radius  & 0.18 \\
 
 \end{tabular}
 \end{adjustbox}
-\captionof{table}{Navigation stack component parameters used in the test.} 
+\captionof{table}{Navigation stack component parameters used.} 
 
 \end{center}
 \begin{center}
@@ -595,16 +621,9 @@ Global  & static\_layer & enabled & true \\
 \hline
 \end{tabular}
 \end{adjustbox}
-\captionof{table}{Layers used in the global and local costmap and their parameter values used in this test.} 
+\captionof{table}{Layers used in the global and local costmap and their parameter values used.} 
 
 \end{center}
-\paragraph{Successes}
-\begin{itemize}
-    \item Robot is able to avoid static obstacles easily if it correctly detects them.
-    \item It can go through relatively narrow spaces.
-    \item Usually reaches the goal in a fast manner.
-    \item Stops when obstacles are put in its path and replans accordingly.
-\end{itemize}
 \paragraph{Problems}
 \begin{itemize}
     \item May be slow to react to dynamic obstacles since it does not take into account their velocity when planning.
@@ -612,8 +631,40 @@ Global  & static\_layer & enabled & true \\
     \item If the navigation environment is too open the robot does not have anything to raytrace and will result in the obstacles of the costmap not being cleared properly.
 \end{itemize}
 \paragraph{Future Work}
-Until now we have only taken into account the position information of the obstacles to avoid them. The next step will be to take into account their radial velocity (given by the radar) to increase the responsiveness of the robot to dynamic objects.  
+Until now we have only taken into account the position information of the obstacles to avoid them. The next step will be to take into account their radial velocity (given by the radar) to increase the responsiveness of the robot to dynamic objects and further parameter tuning.  
+\begin{thebibliography}{9}
+\bibitem{rosbasics} 
+Clearpath Robotics. ROS 101: Intro to the Robot Operating System.\\
+\texttt{https://robohub.org/ros-101-intro-to-the-robot \linebreak -operating-system/}
+\bibitem{tidriver} 
+Texas Instruments. TI mmWave ROS Driver Setup Guide. \\
+\url{http://dev.ti.com/tirex/content/mmwave\_training\_1\_6\_1/labs/lab0006-ros-driver/lab0006\_ros\_driver\_pjt/TI\_mmWave\_ROS\_Driver\_Setup\_Guide.pdf}
 
+\bibitem{demodata} 
+Texas Instruments. mmw Demo Data Structure v0.1. 
+
+\texttt{https://e2e.ti.com/cfs-file/\_\_key/ \linebreak communityserver-discussions-components-files/ \linebreak
+1023/mmw-Demo-Data-Structure\_5F00\_8\_5F00\_16.pdf}
+\bibitem{cluster}
+\texttt{http://pointclouds.org/documentation/tutorials/ \linebreak cluster\_extraction.php}
+\bibitem{stacksetup}
+\texttt{http://wiki.ros.org/navigation/Tutorials/RobotSetup}
+\bibitem{movebase}
+\texttt{http://wiki.ros.org/move\_base}
+\bibitem{dlu}
+David V. Lu, Dave Hershberger, and William D. Smart.\\
+Layered Costmaps for Context-Sensitive Navigation.\\
+\texttt{http://wustl.probablydavid.com/publications/IROS2014.pdf}
+\bibitem{localplanner}
+\texttt{http://wiki.ros.org/base\_local\_planner?distro=indigo}
+\bibitem{costmap}
+\texttt{http://wiki.ros.org/costmap\_2d?distro=indigo}
+\bibitem{obstacle}
+\texttt{http://wiki.ros.org/costmap\_2d/hydro/obstacles}
+\bibitem{inflation}
+\texttt{http://wiki.ros.org/costmap\_2d/hydro/inflation}
+
+\end{thebibliography}
 
 \begin{comment}
 There are three global planners currently available: \textbf{carrot\_planner}, \textbf{navfn} and \textbf{global\_planner}. In our case we will be using \textbf{navfn}.
